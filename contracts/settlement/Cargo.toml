@@ -1,0 +1,21 @@
+[package]
+name = "axelarx-settlement"
+version = "0.1.0"
+edition = "2021"
+description = "AxelarX Settlement Engine - Cross-chain trade settlement and atomic swaps"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait.workspace = true
+linera-base.workspace = true
+linera-sdk.workspace = true
+linera-views.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
