@@ -148,44 +148,6 @@ npm install
 npm run dev
 ```
 
-## 🎯 Development Roadmap
-
-### Phase 1: MVP Foundation (4-6 weeks)
-- [x] Project setup and architecture
-- [ ] Core order book contract implementation
-- [ ] Basic settlement engine
-- [ ] Simple matching algorithm
-- [ ] GraphQL API integration
-- [ ] Basic web interface
-
-### Phase 2: Multi-Market Scaling (3-4 weeks)
-- [ ] Multiple microchain deployment
-- [ ] Market isolation testing
-- [ ] Performance optimization
-- [ ] Advanced order types
-- [ ] Real-time UI updates
-
-### Phase 3: Cross-Chain Integration (6-8 weeks)
-- [ ] Ethereum bridge implementation
-- [ ] Bitcoin bridge (via Lightning/Liquid)
-- [ ] Atomic swap mechanisms
-- [ ] Bridge security audits
-- [ ] Cross-chain testing suite
-
-### Phase 4: Advanced Features (4-6 weeks)
-- [ ] Margin trading capabilities
-- [ ] Liquidity pools (AMM integration)
-- [ ] Advanced order types (stop-loss, etc.)
-- [ ] Mobile application
-- [ ] Professional trading tools
-
-### Phase 5: Production Launch (2-3 weeks)
-- [ ] Security audits
-- [ ] Mainnet deployment
-- [ ] Liquidity bootstrapping
-- [ ] Community onboarding
-- [ ] Marketing launch
-
 ## 🤝 Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
@@ -200,14 +162,6 @@ We welcome contributions from the community! Please see our [Contributing Guide]
 ## 📄 License
 
 This project is licensed under the MIT OR Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- **Website**: [axelarx.io](https://axelarx.io)
-- **Documentation**: [docs.axelarx.io](https://docs.axelarx.io)
-- **Discord**: [discord.gg/axelarx](https://discord.gg/axelarx)
-- **Twitter**: [@AxelarX_io](https://twitter.com/AxelarX_io)
-- **Linera Protocol**: [linera.dev](https://linera.dev/)
 
 ## ⚠️ Disclaimer
 
