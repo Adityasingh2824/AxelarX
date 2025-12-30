@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from 'react-hot-toast';
@@ -7,11 +7,19 @@ import { Toaster } from 'react-hot-toast';
 const inter = Inter({ 
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
 });
 
 const jetbrainsMono = JetBrains_Mono({ 
   subsets: ['latin'],
   variable: '--font-mono',
+  display: 'swap',
+});
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -72,41 +80,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${outfit.variable}`}>
       <body className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-850 text-white antialiased">
-        {/* Background Effects */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-900/20 via-secondary-900/10 to-accent-900/20 animate-gradient-xy" />
-          
-          {/* Floating particles */}
-          <div className="absolute top-0 left-0 w-full h-full">
-            {[...Array(50)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-primary-400/30 rounded-full animate-float"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 6}s`,
-                  animationDuration: `${6 + Math.random() * 4}s`,
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Grid pattern */}
-          <div 
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: '50px 50px',
-            }}
-          />
-        </div>
+        {/* Background Effects - handled in globals.css for SSR compatibility */}
 
         <Providers>
           <main className="relative z-10">
@@ -116,13 +92,21 @@ export default function RootLayout({
           {/* Toast notifications */}
           <Toaster
             position="top-right"
+            containerStyle={{
+              top: 80,
+              right: 20,
+            }}
             toastOptions={{
-              duration: 4000,
+              duration: 3000,
               style: {
-                background: 'rgba(15, 23, 42, 0.9)',
+                background: 'rgba(15, 23, 42, 0.95)',
                 color: '#fff',
                 border: '1px solid rgba(59, 130, 246, 0.2)',
                 backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                maxWidth: '400px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
               },
               success: {
                 iconTheme: {

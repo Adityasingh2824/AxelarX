@@ -1,20 +1,8 @@
-[package]
-name = "axelarx"
-version = "0.1.0"
-edition = "2021"
-description = "AxelarX - Cross-Chain Order Book & Clearinghouse on Linera"
-authors = ["AxelarX Team"]
-license = "MIT OR Apache-2.0"
-
 [workspace]
 members = [
     "contracts/orderbook",
     "contracts/settlement",
     "contracts/bridge",
-    "contracts/matching-engine",
-    "frontend",
-    "indexer",
-    "relayer",
 ]
 
 [workspace.dependencies]

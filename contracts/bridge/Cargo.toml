@@ -1,0 +1,27 @@
+[package]
+name = "axelarx-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "AxelarX Cross-Chain Bridge Contract"
+authors = ["AxelarX Team"]
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+linera-base = { workspace = true }
+linera-sdk = { workspace = true }
+linera-views = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+
+
+

@@ -1,0 +1,21 @@
+# Ignore Rust contracts and build artifacts
+contracts/
+target/
+Cargo.toml
+Cargo.lock
+
+# Ignore deployment scripts
+scripts/
+*.ps1
+*.sh
+
+# Ignore documentation files (optional, remove if you want them in repo)
+*.md
+!README.md
+
+# Ignore other non-essential files
+.env
+.env.local
+*.log
+
+

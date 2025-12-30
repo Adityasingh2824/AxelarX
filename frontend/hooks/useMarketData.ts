@@ -1,262 +1,285 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+'use client';
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface MarketData {
   symbol: string;
   price: number;
   change24h: number;
+  changePercent24h: number;
   high24h: number;
   low24h: number;
   volume24h: number;
+  volumeQuote24h: number;
   marketCap: number;
   lastUpdate: number;
 }
 
-// Mock market data - in production this would come from your Linera GraphQL API
-const mockMarketData: Record<string, MarketData> = {
-  'BTC/USDT': {
-    symbol: 'BTC/USDT',
-    price: 45234.56,
-    change24h: 2.34,
-    high24h: 46789.12,
-    low24h: 44123.45,
-    volume24h: 1234567.89,
-    marketCap: 876543210987,
+interface UseMarketDataResult {
+  marketData: MarketData | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+// Generate realistic mock data
+const generateMockData = (symbol: string): MarketData => {
+  const basePrices: Record<string, number> = {
+    'BTC/USDT': 45234.56,
+    'ETH/USDT': 2834.67,
+    'SOL/USDT': 98.45,
+    'AVAX/USDT': 34.56,
+    'DOT/USDT': 7.89,
+    'ATOM/USDT': 9.12,
+    'NEAR/USDT': 5.67,
+    'FTM/USDT': 0.45,
+    'MATIC/USDT': 0.89,
+    'ARB/USDT': 1.23,
+  };
+
+  const basePrice = basePrices[symbol] || 100;
+  const volatility = 0.02; // 2% volatility
+  const randomChange = (Math.random() - 0.5) * 2 * volatility;
+  const price = basePrice * (1 + randomChange);
+  
+  const change24h = (Math.random() - 0.4) * 10; // -6% to +6%
+  const previousPrice = price / (1 + change24h / 100);
+  
+  const volume24h = basePrice * (10000 + Math.random() * 50000);
+  const volumeQuote24h = volume24h * price;
+  
+  return {
+    symbol,
+    price,
+    change24h: price - previousPrice,
+    changePercent24h: change24h,
+    high24h: price * (1 + Math.random() * 0.05),
+    low24h: price * (1 - Math.random() * 0.05),
+    volume24h,
+    volumeQuote24h,
+    marketCap: price * (1000000 + Math.random() * 10000000),
     lastUpdate: Date.now(),
-  },
-  'ETH/USDT': {
-    symbol: 'ETH/USDT',
-    price: 2834.67,
-    change24h: -1.23,
-    high24h: 2901.34,
-    low24h: 2789.12,
-    volume24h: 987654.32,
-    marketCap: 340987654321,
-    lastUpdate: Date.now(),
-  },
-  'SOL/USDT': {
-    symbol: 'SOL/USDT',
-    price: 98.45,
-    change24h: 5.67,
-    high24h: 102.34,
-    low24h: 94.12,
-    volume24h: 456789.12,
-    marketCap: 43210987654,
-    lastUpdate: Date.now(),
-  },
+  };
 };
 
-export function useMarketData(symbol: string) {
+// Simulated price update
+const updatePrice = (data: MarketData): MarketData => {
+  const volatility = 0.001; // 0.1% per update
+  const randomChange = (Math.random() - 0.5) * 2 * volatility;
+  const newPrice = data.price * (1 + randomChange);
+  
+  return {
+    ...data,
+    price: newPrice,
+    change24h: data.change24h + (newPrice - data.price),
+    high24h: Math.max(data.high24h, newPrice),
+    low24h: Math.min(data.low24h, newPrice),
+    lastUpdate: Date.now(),
+  };
+};
+
+export function useMarketData(market: string): UseMarketDataResult {
+  const queryClient = useQueryClient();
   const [realTimeData, setRealTimeData] = useState<MarketData | null>(null);
 
-  // Fetch initial market data
-  const { data: initialData, isLoading, error } = useQuery({
-    queryKey: ['marketData', symbol],
+  // Initial data fetch
+  const { data, isLoading, isError, error, refetch } = useQuery<MarketData>({
+    queryKey: ['marketData', market],
     queryFn: async () => {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const data = mockMarketData[symbol];
-      if (!data) {
-        throw new Error(`Market data not found for ${symbol}`);
-      }
-      
-      return data;
+      // In production, this would try to fetch from contract first
+      // For now, use mock data until contracts are deployed
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return generateMockData(market);
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: 5000,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  // Simulate real-time updates
+  // Real-time updates simulation
   useEffect(() => {
-    if (!initialData) return;
+    if (!data) return;
 
-    setRealTimeData(initialData);
+    setRealTimeData(data);
 
+    // Simulate WebSocket updates
     const interval = setInterval(() => {
-      setRealTimeData(prevData => {
-        if (!prevData) return null;
-
-        // More realistic price changes with momentum
-        const momentum = Math.sin(Date.now() / 10000) * 0.3; // Adds trend momentum
-        const volatility = 0.02 + Math.random() * 0.03; // 2-5% volatility
-        const priceChange = (Math.random() - 0.5 + momentum) * prevData.price * volatility;
-        const newPrice = Math.max(prevData.price + priceChange, 0.01);
-        
-        // Update 24h high/low if needed
-        const newHigh24h = Math.max(prevData.high24h, newPrice);
-        const newLow24h = Math.min(prevData.low24h, newPrice);
-        
-        // Calculate new 24h change
-        const basePrice = prevData.price - (prevData.price * prevData.change24h / 100);
-        const newChange24h = ((newPrice - basePrice) / basePrice) * 100;
-        
-        // Add some volume fluctuation
-        const volumeChange = (Math.random() - 0.5) * 50000;
-        const newVolume = Math.max(prevData.volume24h + volumeChange, 100000);
-
-        return {
-          ...prevData,
-          price: newPrice,
-          change24h: newChange24h,
-          high24h: newHigh24h,
-          low24h: newLow24h,
-          volume24h: newVolume,
-          lastUpdate: Date.now(),
-        };
+      setRealTimeData(prev => {
+        if (!prev) return data;
+        return updatePrice(prev);
       });
-    }, 1000 + Math.random() * 2000); // Update every 1-3 seconds
+    }, 500 + Math.random() * 1000); // Random interval between 0.5-1.5s
 
     return () => clearInterval(interval);
-  }, [initialData]);
+  }, [data]);
+
+  // Memoize the refetch callback
+  const memoizedRefetch = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   return {
-    marketData: realTimeData || initialData,
+    marketData: realTimeData,
     isLoading,
-    error,
+    isError,
+    error: error as Error | null,
+    refetch: memoizedRefetch,
   };
 }
 
-export function useMarketList() {
-  return useQuery({
-    queryKey: ['marketList'],
-    queryFn: async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      return Object.values(mockMarketData);
-    },
-    staleTime: 60000, // 1 minute
-  });
-}
-
-export function useTradingPairs() {
-  const [pairs, setPairs] = useState([
-    'BTC/USDT',
-    'ETH/USDT', 
-    'SOL/USDT',
-    'AVAX/USDT',
-    'DOT/USDT',
-    'ATOM/USDT',
-    'NEAR/USDT',
-    'FTM/USDT',
-  ]);
-
-  return { pairs };
-}
-
-export function useOrderBook(symbol: string) {
-  const [orderBook, setOrderBook] = useState({
-    bids: [] as Array<{ price: number; size: number; total: number }>,
-    asks: [] as Array<{ price: number; size: number; total: number }>,
-    lastUpdate: Date.now(),
-  });
+// Hook for multiple markets
+export function useMultipleMarketData(markets: string[]) {
+  const [allData, setAllData] = useState<Record<string, MarketData>>({});
 
   useEffect(() => {
-    // Generate initial order book
-    const generateOrderBook = () => {
-      const basePrice = mockMarketData[symbol]?.price || 45000;
-      const spread = basePrice * 0.001; // 0.1% spread
-      
-      const bids = [];
-      const asks = [];
-      
-      let total = 0;
-      
-      // Generate bids
-      for (let i = 0; i < 20; i++) {
-        const price = basePrice - spread / 2 - i * (basePrice * 0.0001);
-        const size = Math.random() * 5 + 0.1;
-        total += size;
-        
-        bids.push({ price, size, total });
-      }
-      
-      total = 0;
-      
-      // Generate asks
-      for (let i = 0; i < 20; i++) {
-        const price = basePrice + spread / 2 + i * (basePrice * 0.0001);
-        const size = Math.random() * 5 + 0.1;
-        total += size;
-        
-        asks.unshift({ price, size, total });
-      }
-      
-      return { bids, asks, lastUpdate: Date.now() };
-    };
+    // Initialize with mock data
+    const initialData: Record<string, MarketData> = {};
+    markets.forEach(market => {
+      initialData[market] = generateMockData(market);
+    });
+    setAllData(initialData);
 
-    setOrderBook(generateOrderBook());
-
-    // Update order book periodically
+    // Update all markets periodically
     const interval = setInterval(() => {
-      setOrderBook(generateOrderBook());
-    }, 2000 + Math.random() * 3000);
+      setAllData(prev => {
+        const updated: Record<string, MarketData> = {};
+        Object.entries(prev).forEach(([market, data]) => {
+          updated[market] = updatePrice(data);
+        });
+        return updated;
+      });
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol]);
+  }, [markets.join(',')]);
+
+  return allData;
+}
+
+// Hook for order book data (mock version - for backward compatibility)
+// Note: Use the contract-based useOrderBook from './useOrderBook' for real data
+export interface OrderBookEntry {
+  price: number;
+  size: number;
+  total: number;
+}
+
+export interface OrderBookData {
+  bids: OrderBookEntry[];
+  asks: OrderBookEntry[];
+  spread: number;
+  spreadPercentage: number;
+}
+
+export function useMockOrderBook(market: string) {
+  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
+
+  useEffect(() => {
+    const generateOrderBook = (basePrice: number): OrderBookData => {
+      const spread = basePrice * 0.0005;
+      const bids: OrderBookEntry[] = [];
+      const asks: OrderBookEntry[] = [];
+
+      let bidTotal = 0;
+      let askTotal = 0;
+
+      for (let i = 0; i < 15; i++) {
+        const bidPrice = basePrice - spread / 2 - i * basePrice * 0.0001;
+        const bidSize = Math.random() * 3 + 0.1;
+        bidTotal += bidSize;
+        bids.push({ price: bidPrice, size: bidSize, total: bidTotal });
+
+        const askPrice = basePrice + spread / 2 + i * basePrice * 0.0001;
+        const askSize = Math.random() * 3 + 0.1;
+        askTotal += askSize;
+        asks.unshift({ price: askPrice, size: askSize, total: askTotal });
+      }
+
+      return {
+        bids,
+        asks,
+        spread,
+        spreadPercentage: (spread / basePrice) * 100,
+      };
+    };
+
+    const basePrices: Record<string, number> = {
+      'BTC/USDT': 45234.56,
+      'ETH/USDT': 2834.67,
+      'SOL/USDT': 98.45,
+    };
+
+    const basePrice = basePrices[market] || 100;
+
+    const interval = setInterval(() => {
+      const newPrice = basePrice * (1 + (Math.random() - 0.5) * 0.002);
+      setOrderBook(generateOrderBook(newPrice));
+    }, 500);
+
+    // Initial data
+    setOrderBook(generateOrderBook(basePrice));
+
+    return () => clearInterval(interval);
+  }, [market]);
 
   return orderBook;
 }
 
-export function useRecentTrades(symbol: string) {
-  const [trades, setTrades] = useState<Array<{
-    id: string;
-    price: number;
-    size: number;
-    side: 'buy' | 'sell';
-    timestamp: number;
-  }>>([]);
+// Hook for recent trades
+export interface Trade {
+  id: string;
+  price: number;
+  size: number;
+  side: 'buy' | 'sell';
+  timestamp: number;
+}
+
+export function useRecentTrades(market: string) {
+  const [trades, setTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
-    // Generate initial trades
-    const generateTrades = () => {
-      const basePrice = mockMarketData[symbol]?.price || 45000;
-      const newTrades = [];
-      
-      for (let i = 0; i < 10; i++) {
-        newTrades.push({
-          id: `trade-${Date.now()}-${i}`,
-          price: basePrice + (Math.random() - 0.5) * 100,
-          size: Math.random() * 2 + 0.01,
-          side: Math.random() > 0.5 ? 'buy' : 'sell' as 'buy' | 'sell',
-          timestamp: Date.now() - i * 1000,
-        });
-      }
-      
-      return newTrades;
+    const basePrices: Record<string, number> = {
+      'BTC/USDT': 45234.56,
+      'ETH/USDT': 2834.67,
+      'SOL/USDT': 98.45,
     };
 
-    setTrades(generateTrades());
+    let price = basePrices[market] || 100;
+
+    // Generate initial trades
+    const initialTrades: Trade[] = [];
+    for (let i = 0; i < 20; i++) {
+      const side = Math.random() > 0.5 ? 'buy' : 'sell';
+      price += (Math.random() - 0.5) * price * 0.001;
+      initialTrades.push({
+        id: `trade-${Date.now()}-${i}`,
+        price,
+        size: Math.random() * 2 + 0.01,
+        side,
+        timestamp: Date.now() - i * 1000,
+      });
+    }
+    setTrades(initialTrades);
 
     // Add new trades periodically
     const interval = setInterval(() => {
-      const basePrice = mockMarketData[symbol]?.price || 45000;
-      const newTrade = {
+      const side = Math.random() > 0.5 ? 'buy' : 'sell';
+      price += (Math.random() - 0.5) * price * 0.001;
+      
+      const newTrade: Trade = {
         id: `trade-${Date.now()}`,
-        price: basePrice + (Math.random() - 0.5) * 100,
+        price,
         size: Math.random() * 2 + 0.01,
-        side: Math.random() > 0.5 ? 'buy' : 'sell' as 'buy' | 'sell',
+        side,
         timestamp: Date.now(),
       };
 
-      setTrades(prevTrades => [newTrade, ...prevTrades.slice(0, 49)]); // Keep last 50 trades
-    }, 3000 + Math.random() * 5000);
+      setTrades(prev => [newTrade, ...prev.slice(0, 49)]);
+    }, 800 + Math.random() * 2000);
 
     return () => clearInterval(interval);
-  }, [symbol]);
+  }, [market]);
 
   return trades;
-}
-
-export function useWalletBalance() {
-  const [balances, setBalances] = useState({
-    BTC: 0.12345678,
-    ETH: 2.5678,
-    SOL: 45.123,
-    USDT: 10000.00,
-    USDC: 5000.00,
-  });
-
-  return { balances };
 }

@@ -1,209 +1,173 @@
 /**
- * Utility functions for formatting numbers, prices, and volumes
+ * Format utilities for AxelarX trading platform
  */
 
-export function formatPrice(price: number, decimals: number = 2): string {
-  if (price === 0) return '0.00';
-  
-  // For very small prices, show more decimals
-  if (price < 0.01) {
-    return price.toFixed(6);
+/**
+ * Format a price value with appropriate decimal places
+ */
+export function formatPrice(price: number): string {
+  if (price >= 1000) {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } else if (price >= 1) {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    });
+  } else if (price >= 0.01) {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 6,
+    });
+  } else {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 6,
+      maximumFractionDigits: 8,
+    });
   }
-  
-  // For normal prices
-  if (price < 1) {
-    return price.toFixed(4);
+}
+
+/**
+ * Format a large number to compact form (K, M, B)
+ */
+export function formatVolume(value: number): string {
+  if (value >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(2)}B`;
+  } else if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(2)}M`;
+  } else if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(2)}K`;
+  } else {
+    return `$${value.toFixed(2)}`;
   }
-  
-  return price.toLocaleString('en-US', {
+}
+
+/**
+ * Format a percentage value
+ */
+export function formatPercentage(value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+/**
+ * Format a quantity with appropriate precision
+ */
+export function formatQuantity(quantity: number, decimals: number = 4): string {
+  return quantity.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-export function formatVolume(volume: number): string {
-  if (volume === 0) return '0';
-  
-  if (volume >= 1e9) {
-    return `${(volume / 1e9).toFixed(2)}B`;
-  }
-  
-  if (volume >= 1e6) {
-    return `${(volume / 1e6).toFixed(2)}M`;
-  }
-  
-  if (volume >= 1e3) {
-    return `${(volume / 1e3).toFixed(2)}K`;
-  }
-  
-  return volume.toFixed(2);
-}
-
-export function formatPercent(percent: number, decimals: number = 2): string {
-  const sign = percent >= 0 ? '+' : '';
-  return `${sign}${percent.toFixed(decimals)}%`;
-}
-
-export function formatCurrency(
-  amount: number, 
-  currency: string = 'USD',
-  decimals: number = 2
-): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(amount);
-}
-
-export function formatCompactNumber(num: number): string {
-  if (num === 0) return '0';
-  
-  const units = ['', 'K', 'M', 'B', 'T'];
-  const unitIndex = Math.floor(Math.log10(Math.abs(num)) / 3);
-  const unitValue = Math.pow(10, unitIndex * 3);
-  const unitName = units[unitIndex] || '';
-  
-  const value = num / unitValue;
-  const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
-  
-  return `${value.toFixed(decimals)}${unitName}`;
-}
-
-export function formatTimeAgo(timestamp: number): string {
+/**
+ * Format a timestamp to relative time
+ */
+export function formatRelativeTime(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
   
-  if (diff < 60000) { // Less than 1 minute
-    return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 60_000) {
+    return 'Just now';
+  } else if (diff < 3_600_000) {
+    const minutes = Math.floor(diff / 60_000);
+    return `${minutes}m ago`;
+  } else if (diff < 86_400_000) {
+    const hours = Math.floor(diff / 3_600_000);
+    return `${hours}h ago`;
+  } else {
+    const days = Math.floor(diff / 86_400_000);
+    return `${days}d ago`;
   }
-  
-  if (diff < 3600000) { // Less than 1 hour
-    return `${Math.floor(diff / 60000)}m ago`;
-  }
-  
-  if (diff < 86400000) { // Less than 1 day
-    return `${Math.floor(diff / 3600000)}h ago`;
-  }
-  
-  return `${Math.floor(diff / 86400000)}d ago`;
 }
 
-export function formatAddress(address: string, startChars: number = 6, endChars: number = 4): string {
-  if (address.length <= startChars + endChars) {
+/**
+ * Format a timestamp to time string
+ */
+export function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+}
+
+/**
+ * Format a date to string
+ */
+export function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Format a full datetime
+ */
+export function formatDateTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+/**
+ * Truncate a string (e.g., wallet address)
+ */
+export function truncateAddress(address: string, start: number = 6, end: number = 4): string {
+  if (address.length <= start + end) {
     return address;
   }
-  
-  return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
+  return `${address.slice(0, start)}...${address.slice(-end)}`;
 }
 
-export function formatTokenAmount(
-  amount: number, 
-  decimals: number = 18, 
-  displayDecimals: number = 4
-): string {
-  const value = amount / Math.pow(10, decimals);
-  
-  if (value === 0) return '0';
-  
-  if (value < 0.0001) {
-    return '< 0.0001';
-  }
-  
-  return value.toFixed(displayDecimals);
+/**
+ * Format a number with commas
+ */
+export function formatNumber(value: number): string {
+  return value.toLocaleString('en-US');
 }
 
-export function formatMarketCap(marketCap: number): string {
-  if (marketCap >= 1e12) {
-    return `$${(marketCap / 1e12).toFixed(2)}T`;
-  }
-  
-  if (marketCap >= 1e9) {
-    return `$${(marketCap / 1e9).toFixed(2)}B`;
-  }
-  
-  if (marketCap >= 1e6) {
-    return `$${(marketCap / 1e6).toFixed(2)}M`;
-  }
-  
-  return `$${formatCompactNumber(marketCap)}`;
+/**
+ * Convert basis points to percentage
+ */
+export function basisPointsToPercent(bp: number): string {
+  return (bp / 100).toFixed(2) + '%';
 }
 
-export function formatOrderSize(size: number, asset: string): string {
-  if (size === 0) return `0 ${asset}`;
-  
-  if (size < 0.0001) {
-    return `< 0.0001 ${asset}`;
-  }
-  
-  if (size >= 1000) {
-    return `${formatCompactNumber(size)} ${asset}`;
-  }
-  
-  return `${size.toFixed(4)} ${asset}`;
+/**
+ * Format order side display
+ */
+export function formatOrderSide(side: 'buy' | 'sell'): string {
+  return side.charAt(0).toUpperCase() + side.slice(1);
 }
 
-export function formatPriceChange(current: number, previous: number): {
-  absolute: string;
-  percent: string;
-  isPositive: boolean;
-} {
-  const absolute = current - previous;
-  const percent = previous !== 0 ? (absolute / previous) * 100 : 0;
-  
-  return {
-    absolute: `${absolute >= 0 ? '+' : ''}${formatPrice(absolute)}`,
-    percent: formatPercent(percent),
-    isPositive: absolute >= 0,
+/**
+ * Format order type display
+ */
+export function formatOrderType(type: 'limit' | 'market' | 'stop-limit'): string {
+  return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+/**
+ * Format order status display
+ */
+export function formatOrderStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    pending: 'Pending',
+    partial: 'Partially Filled',
+    filled: 'Filled',
+    cancelled: 'Cancelled',
+    expired: 'Expired',
   };
-}
-
-export function formatTradingPair(base: string, quote: string): string {
-  return `${base.toUpperCase()}/${quote.toUpperCase()}`;
-}
-
-export function parseTradingPair(pair: string): { base: string; quote: string } {
-  const [base, quote] = pair.split('/');
-  return { base: base.toLowerCase(), quote: quote.toLowerCase() };
-}
-
-export function formatLatency(latency: number): string {
-  if (latency < 1) {
-    return `${(latency * 1000).toFixed(1)}μs`;
-  }
-  
-  if (latency < 1000) {
-    return `${latency.toFixed(1)}ms`;
-  }
-  
-  return `${(latency / 1000).toFixed(2)}s`;
-}
-
-export function formatThroughput(tps: number): string {
-  if (tps >= 1e6) {
-    return `${(tps / 1e6).toFixed(1)}M TPS`;
-  }
-  
-  if (tps >= 1e3) {
-    return `${(tps / 1e3).toFixed(1)}K TPS`;
-  }
-  
-  return `${tps.toFixed(0)} TPS`;
-}
-
-export function formatGasPrice(gwei: number): string {
-  if (gwei < 1) {
-    return `${(gwei * 1000).toFixed(0)} mwei`;
-  }
-  
-  return `${gwei.toFixed(1)} gwei`;
-}
-
-export function formatBlockNumber(blockNumber: number): string {
-  return `#${blockNumber.toLocaleString()}`;
-}
-
-export function formatTransactionHash(hash: string): string {
-  return formatAddress(hash, 8, 8);
+  return statusMap[status] || status;
 }
