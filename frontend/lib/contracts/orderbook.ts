@@ -433,6 +433,122 @@ export class OrderBookClient {
   }
 
   /**
+   * Get user positions
+   */
+  async getUserPositions(userAddress: string): Promise<any[]> {
+    const query = `
+      query GetUserPositions($appId: String!, $user: String!) {
+        application(appId: $appId) {
+          view {
+            positions(user: $user) {
+              market
+              baseAsset
+              quoteAsset
+              baseQuantity
+              quoteQuantity
+              averageEntryPrice
+              realizedPnl
+              unrealizedPnl
+              totalTrades
+              totalVolume
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.client.query(
+        query,
+        { appId: this.appId, user: userAddress }
+      );
+
+      return result.data?.application?.view?.positions || [];
+    } catch (error) {
+      console.error('Error fetching user positions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user trade history
+   */
+  async getUserTradeHistory(userAddress: string, market?: string, limit: number = 100): Promise<Trade[]> {
+    const query = `
+      query GetUserTradeHistory($appId: String!, $user: String!, $market: String, $limit: Int!) {
+        application(appId: $appId) {
+          view {
+            tradeHistory(user: $user, market: $market, limit: $limit) {
+              tradeId
+              orderId
+              market
+              side
+              price
+              quantity
+              fee
+              timestamp
+              realizedPnl
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.client.query(
+        query,
+        { appId: this.appId, user: userAddress, market: market || null, limit }
+      );
+
+      return result.data?.application?.view?.tradeHistory || [];
+    } catch (error) {
+      console.error('Error fetching trade history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get portfolio metrics
+   */
+  async getPortfolioMetrics(userAddress: string): Promise<any | null> {
+    const query = `
+      query GetPortfolioMetrics($appId: String!, $user: String!) {
+        application(appId: $appId) {
+          view {
+            portfolioMetrics(user: $user) {
+              totalTrades
+              winningTrades
+              losingTrades
+              totalRealizedPnl
+              totalUnrealizedPnl
+              averageProfitPerTrade
+              averageLossPerTrade
+              largestWin
+              largestLoss
+              winRate
+              totalVolume
+              roi
+              totalFeesPaid
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.client.query(
+        query,
+        { appId: this.appId, user: userAddress }
+      );
+
+      return result.data?.application?.view?.portfolioMetrics || null;
+    } catch (error) {
+      console.error('Error fetching portfolio metrics:', error);
+      return null;
+    }
+  }
+
+  /**
    * Withdraw tokens
    */
   async withdraw(asset: string, amount: string): Promise<{ success: boolean; error?: string }> {

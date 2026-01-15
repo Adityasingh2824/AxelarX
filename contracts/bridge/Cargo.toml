@@ -17,10 +17,21 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
-tracing = "0.1"
+# Tracing with minimal features for WASM compatibility (no std for WASM)
+tracing = { workspace = true, default-features = false }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"] }
+# Tokio only for tests (not compiled to WASM)
+tokio = { workspace = true, features = ["test-util", "rt-multi-thread", "macros"] }
+
+
+
+
+
+
+
+
+
 
 
 

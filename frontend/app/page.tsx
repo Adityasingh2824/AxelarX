@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import WalletConnect from '@/components/WalletConnect';
+import LivePriceTicker from '@/components/LivePriceTicker';
 
 // Animated counter component
 const AnimatedCounter = ({ value, suffix = '', prefix = '' }: { value: number; suffix?: string; prefix?: string }) => {
@@ -188,19 +189,19 @@ export default function HomePage() {
               {/* Logo */}
               <Link href="/" className="flex items-center gap-3 group">
                 <motion.div 
-                  whileHover={{ rotate: 180, scale: 1.1 }}
+                  whileHover={{ scale: 1.1 }}
                   transition={{ duration: 0.5 }}
-                  className="relative w-10 h-10 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-glow"
+                  className="relative w-10 h-10 flex items-center justify-center"
                 >
-                  <span className="text-white font-bold text-xl">A</span>
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <img src="/AxelarX.png" alt="AxelarX Logo" className="w-10 h-10 object-contain" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity -z-10" />
                 </motion.div>
                 <span className="text-2xl font-bold text-gradient-primary">AxelarX</span>
               </Link>
 
               {/* Navigation Links */}
               <div className="hidden lg:flex items-center gap-1">
-                {['Trade', 'Pools', 'Bridge', 'Docs'].map((item) => (
+                {['Trade', 'Portfolio', 'Pools', 'Bridge', 'Docs'].map((item) => (
                   <Link 
                     key={item}
                     href={`/${item.toLowerCase()}`} 
@@ -357,6 +358,20 @@ export default function HomePage() {
           </motion.div>
         </motion.div>
       </motion.section>
+
+      {/* Live Price Ticker Section */}
+      <section className="relative py-12 px-4 border-y border-white/5 bg-dark-900/50">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <LivePriceTicker />
+          </motion.div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="relative py-32 px-4">
@@ -618,9 +633,7 @@ export default function HomePage() {
             {/* Logo & description */}
             <div className="lg:col-span-2">
               <Link href="/" className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">A</span>
-                </div>
+                <img src="/AxelarX.png" alt="AxelarX Logo" className="w-10 h-10 object-contain" />
                 <span className="text-2xl font-bold text-gradient-primary">AxelarX</span>
               </Link>
               <p className="text-gray-400 max-w-md mb-6">

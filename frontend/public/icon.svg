@@ -1,0 +1,44 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- AxelarX Logo - Stylized Infinity/8 Symbol with Angular Lines -->
+  <!-- Top open diamond/square -->
+  <path d="M16 2 L22 8 L22 14 L16 20 L10 14 L10 8 Z" 
+        fill="none" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Top point extending upwards -->
+  <line x1="16" y1="2" x2="16" y2="0" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round"/>
+  
+  <!-- Middle vertical channel -->
+  <path d="M10 14 L10 18 L16 20 L22 18 L22 14" 
+        fill="none" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Small horizontal break on left side -->
+  <line x1="8" y1="16" x2="8" y2="16" 
+        stroke="rgba(15, 23, 42, 1)" 
+        stroke-width="3" 
+        stroke-linecap="round"/>
+  
+  <!-- Bottom open diamond/square -->
+  <path d="M16 20 L22 26 L22 30 L16 32 L10 30 L10 26 Z" 
+        fill="none" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Bottom point extending downwards -->
+  <line x1="16" y1="32" x2="16" y2="34" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round"/>
+</svg>

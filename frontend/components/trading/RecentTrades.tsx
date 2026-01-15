@@ -1,17 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Clock } from 'lucide-react';
+import { Activity, Loader2 } from 'lucide-react';
 import { formatPrice } from '@/utils/format';
-
-interface Trade {
-  id: string;
-  price: number;
-  size: number;
-  side: 'buy' | 'sell';
-  timestamp: number;
-}
+import { useRecentTrades, Trade } from '@/hooks/useMarketData';
 
 interface RecentTradesProps {
   market: string;
@@ -28,66 +21,34 @@ const formatTime = (timestamp: number) => {
 };
 
 export default function RecentTrades({ market }: RecentTradesProps) {
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const { trades, isLoading } = useRecentTrades(market);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [prevTradeCount, setPrevTradeCount] = useState(0);
   
-  // Get base price from market
-  const basePrice = useMemo(() => {
-    const prices: Record<string, number> = {
-      'BTC/USDT': 45234.56,
-      'ETH/USDT': 2834.67,
-      'SOL/USDT': 98.45,
-    };
-    return prices[market] || 45000;
-  }, [market]);
-  
-  // Generate initial trades
+  // Highlight new trades
   useEffect(() => {
-    const initialTrades: Trade[] = [];
-    let price = basePrice;
-    
-    for (let i = 0; i < 20; i++) {
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
-      price += (Math.random() - 0.5) * price * 0.001;
-      
-      initialTrades.push({
-        id: `trade-${Date.now()}-${i}`,
-        price,
-        size: Math.random() * 2 + 0.01,
-        side,
-        timestamp: Date.now() - i * 1000,
-      });
-    }
-    
-    setTrades(initialTrades);
-  }, [basePrice, market]);
-  
-  // Add new trades periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const lastTrade = trades[0];
-      if (!lastTrade) return;
-      
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
-      const priceChange = (Math.random() - 0.5) * lastTrade.price * 0.001;
-      
-      const newTrade: Trade = {
-        id: `trade-${Date.now()}`,
-        price: lastTrade.price + priceChange,
-        size: Math.random() * 2 + 0.01,
-        side,
-        timestamp: Date.now(),
-      };
-      
-      setTrades(prev => [newTrade, ...prev.slice(0, 49)]);
-      setHighlightedId(newTrade.id);
-      
-      // Clear highlight after animation
+    if (trades.length > prevTradeCount && trades[0]) {
+      setHighlightedId(trades[0].id);
       setTimeout(() => setHighlightedId(null), 500);
-    }, 800 + Math.random() * 2000);
-    
-    return () => clearInterval(interval);
-  }, [trades]);
+    }
+    setPrevTradeCount(trades.length);
+  }, [trades.length, prevTradeCount]);
+
+  if (isLoading) {
+    return (
+      <div className="card h-64 flex flex-col">
+        <div className="flex items-center justify-between pb-3 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary-400" />
+            <h3 className="font-semibold text-white text-sm">Recent Trades</h3>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card h-64 flex flex-col">

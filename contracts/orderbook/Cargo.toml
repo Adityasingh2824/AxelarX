@@ -15,7 +15,9 @@ linera-views.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
-chrono.workspace = true
+# Chrono with minimal features for WASM compatibility (no std for WASM)
+chrono = { workspace = true, default-features = false, features = ["serde"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["test-util"] }
+# Tokio only for tests (not compiled to WASM)
+tokio = { workspace = true, features = ["test-util", "rt-multi-thread", "macros"] }

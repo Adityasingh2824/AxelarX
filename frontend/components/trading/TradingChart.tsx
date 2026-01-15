@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { priceService, Candlestick } from '@/lib/priceService';
 
 interface TradingChartProps {
   market: string;
@@ -9,104 +11,89 @@ interface TradingChartProps {
   chartType?: 'candle' | 'line';
 }
 
-interface Candle {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
-// Generate realistic price data
-const generateCandleData = (basePrice: number, count: number = 100): Candle[] => {
-  const candles: Candle[] = [];
-  let currentPrice = basePrice;
-  const now = Date.now();
-  const interval = 60000; // 1 minute
-  
-  for (let i = count - 1; i >= 0; i--) {
-    const volatility = 0.002 + Math.random() * 0.008;
-    const trend = Math.sin(i / 10) * 0.001;
-    const change = (Math.random() - 0.5 + trend) * currentPrice * volatility;
-    
-    const open = currentPrice;
-    const close = currentPrice + change;
-    const high = Math.max(open, close) + Math.random() * Math.abs(change) * 0.5;
-    const low = Math.min(open, close) - Math.random() * Math.abs(change) * 0.5;
-    const volume = 100 + Math.random() * 1000;
-    
-    candles.push({
-      time: now - i * interval,
-      open,
-      high,
-      low,
-      close,
-      volume,
-    });
-    
-    currentPrice = close;
-  }
-  
-  return candles;
-};
-
 export default function TradingChart({ market, timeframe = '15m', chartType = 'candle' }: TradingChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [candles, setCandles] = useState<Candle[]>([]);
+  const [candles, setCandles] = useState<Candlestick[]>([]);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
-  const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
+  const [hoveredCandle, setHoveredCandle] = useState<Candlestick | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Get base price from market
-  const basePrice = useMemo(() => {
-    const prices: Record<string, number> = {
-      'BTC/USDT': 45234.56,
-      'ETH/USDT': 2834.67,
-      'SOL/USDT': 98.45,
-    };
-    return prices[market] || 45000;
-  }, [market]);
-  
-  // Initialize and update candle data
+  // Fetch historical candlestick data
   useEffect(() => {
-    setCandles(generateCandleData(basePrice, 80));
+    let mounted = true;
     
-    // Add new candle periodically
-    const interval = setInterval(() => {
-      setCandles(prev => {
-        const lastCandle = prev[prev.length - 1];
-        if (!lastCandle) return prev;
-        const volatility = 0.001 + Math.random() * 0.003;
-        const change = (Math.random() - 0.5) * lastCandle.close * volatility;
-        
-        const newCandle: Candle = {
-          time: Date.now(),
-          open: lastCandle.close,
-          close: lastCandle.close + change,
-          high: Math.max(lastCandle.close, lastCandle.close + change) + Math.random() * Math.abs(change) * 0.3,
-          low: Math.min(lastCandle.close, lastCandle.close + change) - Math.random() * Math.abs(change) * 0.3,
-          volume: 100 + Math.random() * 500,
+    const fetchCandlesticks = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Determine limit based on timeframe
+        const limits: Record<string, number> = {
+          '1m': 500,
+          '5m': 500,
+          '15m': 500,
+          '1H': 500,
+          '4H': 300,
+          '1D': 365,
+          '1W': 104,
         };
         
-        // Update last candle or add new one based on probability
-        if (Math.random() > 0.7) {
-          return [...prev.slice(1), newCandle];
+        const limit = limits[timeframe] || 500;
+        const data = await priceService.getCandlesticks(market, timeframe, limit);
+        
+        if (mounted) {
+          setCandles(data);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Error fetching candlesticks:', err);
+        if (mounted) {
+          setError('Failed to load chart data');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchCandlesticks();
+
+    // Subscribe to real-time candlestick updates
+    const unsubscribe = priceService.subscribeToCandlesticks(market, timeframe, (candlestick) => {
+      if (!mounted) return;
+      
+      setCandles(prev => {
+        // If the candle is closed, replace the last one or add new
+        if (candlestick.isClosed) {
+          // Check if we already have this candle (by time)
+          const existingIndex = prev.findIndex(c => c.time === candlestick.time);
+          if (existingIndex >= 0) {
+            // Update existing candle
+            const updated = [...prev];
+            updated[existingIndex] = candlestick;
+            return updated;
+          } else {
+            // Add new candle (remove oldest if we exceed limit)
+            const newCandles = [...prev, candlestick];
+            return newCandles.slice(-500); // Keep last 500 candles
+          }
         } else {
+          // Update the last candle (current/open candle)
+          if (prev.length === 0) {
+            return [candlestick];
+          }
           const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (!last) return [...prev, newCandle];
-          last.close = newCandle.close;
-          last.high = Math.max(last.high, newCandle.high);
-          last.low = Math.min(last.low, newCandle.low);
-          last.volume += newCandle.volume * 0.1;
+          updated[updated.length - 1] = candlestick;
           return updated;
         }
       });
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [basePrice, market]);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [market, timeframe]);
   
   // Handle resize
   useEffect(() => {
@@ -222,16 +209,42 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
     return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
   }, [linePath, chartParams, candles.length, indexToX]);
 
-  if (!chartParams) {
+  if (isLoading) {
     return (
       <div ref={containerRef} className="w-full h-full flex items-center justify-center">
-        <div className="spinner" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+          <span className="text-gray-400 text-sm">Loading chart data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !chartParams || candles.length === 0) {
+    return (
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <AlertCircle className="w-12 h-12 text-gray-500" />
+          <div>
+            <h3 className="text-white font-semibold mb-1">Unable to load chart</h3>
+            <p className="text-gray-400 text-sm">{error || 'No data available'}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
+      {/* Live indicator */}
+      <div className="absolute top-2 left-2 z-10 flex items-center gap-2 px-2 py-1 glass rounded-lg border border-white/10">
+        <div className="relative">
+          <div className="w-2 h-2 rounded-full bg-bull-500" />
+          <div className="absolute inset-0 w-2 h-2 rounded-full bg-bull-500 animate-ping opacity-75" />
+        </div>
+        <span className="text-xs text-gray-400">Live</span>
+      </div>
+
       <svg
         width={dimensions.width}
         height={dimensions.height}
@@ -295,7 +308,7 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
               const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
               
               return (
-                <g key={i}>
+                <g key={`${candle.time}-${i}`}>
                   {/* Wick */}
                   <line
                     x1={x}
@@ -310,7 +323,7 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
                   <motion.rect
                     initial={{ scaleY: 0 }}
                     animate={{ scaleY: 1 }}
-                    transition={{ duration: 0.3, delay: i * 0.005 }}
+                    transition={{ duration: 0.2 }}
                     x={x - chartParams.candleWidth / 2}
                     y={bodyTop}
                     width={chartParams.candleWidth}
@@ -318,6 +331,7 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
                     fill={color}
                     rx="1"
                     style={{ transformOrigin: `${x}px ${bodyTop + bodyHeight / 2}px` }}
+                    opacity={candle.isClosed ? 1 : 0.7} // Dim current/open candle
                   />
                 </g>
               );
@@ -396,9 +410,11 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute top-4 left-4 glass-strong rounded-xl p-3 text-xs font-mono z-10"
+          className="absolute top-4 left-4 glass-strong rounded-xl p-3 text-xs font-mono z-10 border border-white/10"
         >
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <span className="text-gray-400">Time:</span>
+            <span className="text-white">{new Date(hoveredCandle.time).toLocaleString()}</span>
             <span className="text-gray-400">Open:</span>
             <span className="text-white">${hoveredCandle.open.toFixed(2)}</span>
             <span className="text-gray-400">High:</span>
@@ -409,6 +425,8 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
             <span className={hoveredCandle.close >= hoveredCandle.open ? 'text-bull-400' : 'text-bear-400'}>
               ${hoveredCandle.close.toFixed(2)}
             </span>
+            <span className="text-gray-400">Volume:</span>
+            <span className="text-white">{hoveredCandle.volume.toFixed(2)}</span>
           </div>
         </motion.div>
       )}
@@ -418,11 +436,11 @@ export default function TradingChart({ market, timeframe = '15m', chartType = 'c
         <motion.div
           animate={{ y: [0, -2, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="absolute right-0 glass-strong rounded-l-lg px-2 py-1 text-xs font-mono"
+          className="absolute right-0 glass-strong rounded-l-lg px-2 py-1 text-xs font-mono border border-white/10"
           style={{ top: priceToY(candles[candles.length - 1]?.close ?? 0) - 10 }}
         >
-            <span className={(candles[candles.length - 1]?.close ?? 0) >= (candles[candles.length - 1]?.open ?? 0) ? 'text-bull-400' : 'text-bear-400'}>
-              ${(candles[candles.length - 1]?.close ?? 0).toFixed(2)}
+          <span className={(candles[candles.length - 1]?.close ?? 0) >= (candles[candles.length - 1]?.open ?? 0) ? 'text-bull-400' : 'text-bear-400'}>
+            ${(candles[candles.length - 1]?.close ?? 0).toFixed(2)}
           </span>
         </motion.div>
       )}

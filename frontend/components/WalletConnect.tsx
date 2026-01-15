@@ -2,21 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, ChevronDown, Copy, ExternalLink, LogOut, Check } from 'lucide-react';
-import { lineraClient } from '@/lib/linera';
-
-interface WalletState {
-  address: string;
-  chainId: string;
-  balance: string;
-  isConnected: boolean;
-}
+import { Wallet, ChevronDown, Copy, ExternalLink, LogOut, Check, Coins } from 'lucide-react';
+import { evmClient, EVMWallet } from '@/lib/evm';
+import { EVM_CONTRACTS } from '@/lib/contracts/evm-config';
 
 export default function WalletConnect() {
-  const [wallet, setWallet] = useState<WalletState | null>(null);
+  const [wallet, setWallet] = useState<EVMWallet | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isFaucetOpen, setIsFaucetOpen] = useState(false);
+  const [faucetLoading, setFaucetLoading] = useState<string | null>(null);
   
   // Format address for display
   const formatAddress = (address: string) => {
@@ -28,7 +24,7 @@ export default function WalletConnect() {
     setIsConnecting(true);
     
     try {
-      const walletData = await lineraClient.connectWallet();
+      const walletData = await evmClient.connectWallet();
       if (walletData) {
         setWallet(walletData);
       }
@@ -53,10 +49,25 @@ export default function WalletConnect() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // Request tokens from faucet
+  const handleFaucet = async (token: string) => {
+    setFaucetLoading(token);
+    try {
+      const amount = token === 'WBTC' ? '1' : token === 'WETH' ? '10' : '10000';
+      const success = await evmClient.requestFaucet(token, amount);
+      if (success) {
+        console.log(`Received ${amount} ${token} from faucet`);
+      }
+    } catch (error) {
+      console.error('Faucet error:', error);
+    } finally {
+      setFaucetLoading(null);
+    }
+  };
   
   // Check for existing connection on mount
   useEffect(() => {
-    // Auto-connect if previously connected
     const savedConnection = localStorage.getItem('walletConnected');
     if (savedConnection === 'true') {
       handleConnect();
@@ -71,6 +82,23 @@ export default function WalletConnect() {
       localStorage.removeItem('walletConnected');
     }
   }, [wallet]);
+
+  // Listen for account changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length === 0) {
+          handleDisconnect();
+        } else {
+          handleConnect();
+        }
+      });
+
+      window.ethereum.on('chainChanged', () => {
+        handleConnect();
+      });
+    }
+  }, []);
 
   if (!wallet) {
     return (
@@ -123,7 +151,7 @@ export default function WalletConnect() {
             {formatAddress(wallet.address)}
           </div>
           <div className="text-xs text-gray-400">
-            {parseFloat(wallet.balance).toFixed(2)} LINERA
+            {parseFloat(wallet.balance).toFixed(4)} ETH
           </div>
         </div>
         
@@ -154,14 +182,14 @@ export default function WalletConnect() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full mt-2 w-64 glass-strong rounded-xl shadow-2xl overflow-hidden z-50"
+              className="absolute right-0 top-full mt-2 w-72 glass-strong rounded-xl shadow-2xl overflow-hidden z-50"
             >
               {/* Wallet Info */}
               <div className="p-4 border-b border-white/5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-gray-500">Connected Wallet</span>
                   <span className="text-xs px-2 py-0.5 bg-bull-500/20 text-bull-400 rounded-full">
-                    Active
+                    Base Sepolia
                   </span>
                 </div>
                 
@@ -184,25 +212,55 @@ export default function WalletConnect() {
                       )}
                     </motion.button>
                     
-                    <motion.button
+                    <motion.a
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      href={`${EVM_CONTRACTS.blockExplorer}/address/${wallet.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="p-1.5 text-gray-400 hover:text-white transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
-                    </motion.button>
+                    </motion.a>
                   </div>
                 </div>
               </div>
               
               {/* Balance */}
               <div className="p-4 border-b border-white/5">
-                <div className="text-xs text-gray-500 mb-1">Balance</div>
+                <div className="text-xs text-gray-500 mb-1">ETH Balance</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-bold text-white">
                     {parseFloat(wallet.balance).toFixed(4)}
                   </span>
-                  <span className="text-sm text-gray-400">LINERA</span>
+                  <span className="text-sm text-gray-400">ETH</span>
+                </div>
+              </div>
+              
+              {/* Faucet Section */}
+              <div className="p-4 border-b border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-gray-500">Get Test Tokens</span>
+                  <Coins className="w-4 h-4 text-primary-400" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {['WBTC', 'WETH', 'USDT', 'USDC'].map((token) => (
+                    <motion.button
+                      key={token}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleFaucet(token)}
+                      disabled={faucetLoading === token}
+                      className="px-3 py-2 text-xs font-medium bg-white/5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {faucetLoading === token ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                      ) : (
+                        `Get ${token}`
+                      )}
+                    </motion.button>
+                  ))}
                 </div>
               </div>
               
@@ -211,8 +269,8 @@ export default function WalletConnect() {
                 <div className="text-xs text-gray-500 mb-2">Network</div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-primary-500 rounded-full" />
-                  <span className="text-sm text-white capitalize">
-                    {wallet.chainId.replace('-', ' ')}
+                  <span className="text-sm text-white">
+                    Base Sepolia (Chain ID: {wallet.chainId})
                   </span>
                 </div>
               </div>

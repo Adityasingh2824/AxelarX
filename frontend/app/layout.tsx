@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     siteName: 'AxelarX',
     images: [
       {
-        url: '/og-image.png',
+        url: '/logo.svg',
         width: 1200,
         height: 630,
         alt: 'AxelarX - Cross-Chain DEX',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     title: 'AxelarX - Cross-Chain DEX',
     description: 'Bridging Every Chain, Empowering Every Connection',
     creator: '@AxelarX_io',
-    images: ['/og-image.png'],
+    images: ['/logo.svg'],
   },
   robots: {
     index: true,

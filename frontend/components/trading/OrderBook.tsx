@@ -1,95 +1,43 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUp, ArrowDown, Layers, Minus } from 'lucide-react';
+import { ArrowUp, ArrowDown, Layers, Loader2 } from 'lucide-react';
 import { formatPrice } from '@/utils/format';
-
-interface OrderBookEntry {
-  price: number;
-  size: number;
-  total: number;
-}
+import { useOrderBookData } from '@/hooks/useMarketData';
 
 interface OrderBookProps {
   market: string;
 }
 
-// Generate realistic order book data
-const generateOrderBook = (basePrice: number) => {
-  const spread = basePrice * 0.0005; // 0.05% spread
-  const bids: OrderBookEntry[] = [];
-  const asks: OrderBookEntry[] = [];
-  
-  let bidTotal = 0;
-  let askTotal = 0;
-  
-  // Generate bids (buy orders)
-  for (let i = 0; i < 15; i++) {
-    const price = basePrice - spread / 2 - (i * basePrice * 0.0001);
-    const size = Math.random() * 3 + 0.1;
-    bidTotal += size;
-    bids.push({ price, size, total: bidTotal });
-  }
-  
-  // Generate asks (sell orders)
-  for (let i = 0; i < 15; i++) {
-    const price = basePrice + spread / 2 + (i * basePrice * 0.0001);
-    const size = Math.random() * 3 + 0.1;
-    askTotal += size;
-    asks.unshift({ price, size, total: askTotal });
-  }
-  
-  return { bids, asks };
-};
-
 export default function OrderBook({ market }: OrderBookProps) {
-  const [orderBook, setOrderBook] = useState({ bids: [] as OrderBookEntry[], asks: [] as OrderBookEntry[] });
+  const { orderBook, isLoading } = useOrderBookData(market);
   const [viewMode, setViewMode] = useState<'both' | 'bids' | 'asks'>('both');
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   
-  // Get base price from market
-  const basePrice = useMemo(() => {
-    const prices: Record<string, number> = {
-      'BTC/USDT': 45234.56,
-      'ETH/USDT': 2834.67,
-      'SOL/USDT': 98.45,
-    };
-    return prices[market] || 45000;
-  }, [market]);
-  
-  // Update order book periodically
-  useEffect(() => {
-    const updateOrderBook = () => {
-      const newBasePrice = basePrice + (Math.random() - 0.5) * basePrice * 0.001;
-      setOrderBook(generateOrderBook(newBasePrice));
-    };
-    
-    updateOrderBook();
-    const interval = setInterval(updateOrderBook, 500 + Math.random() * 1000);
-    
-    return () => clearInterval(interval);
-  }, [basePrice]);
-  
   // Calculate max total for depth visualization
   const maxTotal = useMemo(() => {
+    if (!orderBook) return 0;
     const maxBid = orderBook.bids.length > 0 ? (orderBook.bids[orderBook.bids.length - 1]?.total ?? 0) : 0;
-    const maxAsk = orderBook.asks.length > 0 ? (orderBook.asks[0]?.total ?? 0) : 0;
+    const maxAsk = orderBook.asks.length > 0 ? (orderBook.asks[orderBook.asks.length - 1]?.total ?? 0) : 0;
     return Math.max(maxBid, maxAsk);
   }, [orderBook]);
-  
-  // Spread calculation
-  const spread = useMemo(() => {
-    if (orderBook.asks.length > 0 && orderBook.bids.length > 0) {
-      const lowestAsk = orderBook.asks[orderBook.asks.length - 1]?.price || 0;
-      const highestBid = orderBook.bids[0]?.price || 0;
-      return {
-        value: lowestAsk - highestBid,
-        percentage: ((lowestAsk - highestBid) / lowestAsk) * 100
-      };
-    }
-    return { value: 0, percentage: 0 };
-  }, [orderBook]);
+
+  if (isLoading || !orderBook) {
+    return (
+      <div className="card h-full flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-dark-900/50">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary-400" />
+            <h3 className="font-semibold text-white text-sm">Order Book</h3>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card h-full flex flex-col overflow-hidden">
@@ -98,6 +46,10 @@ export default function OrderBook({ market }: OrderBookProps) {
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-primary-400" />
           <h3 className="font-semibold text-white text-sm">Order Book</h3>
+          <div className="flex items-center gap-1 ml-2">
+            <div className="w-2 h-2 rounded-full bg-bull-500 animate-pulse" />
+            <span className="text-xs text-gray-500">Live</span>
+          </div>
         </div>
         
         {/* View Mode Toggle */}
@@ -170,7 +122,7 @@ export default function OrderBook({ market }: OrderBookProps) {
                     >
                       {/* Depth visualization */}
                       <div 
-                        className="absolute inset-y-0 right-0 bg-bear-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100"
+                        className="absolute inset-y-0 right-0 bg-bear-500/10 transition-all duration-300"
                         style={{ width: `${(ask.total / maxTotal) * 100}%` }}
                       />
                       
@@ -198,8 +150,8 @@ export default function OrderBook({ market }: OrderBookProps) {
             <div className="flex items-center gap-4 relative z-10">
               <div className="text-xs text-gray-500 font-medium">Spread</div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-white font-semibold">{formatPrice(spread.value)}</span>
-                <span className="text-xs text-primary-400 font-medium">({spread.percentage.toFixed(3)}%)</span>
+                <span className="font-mono text-sm text-white font-semibold">{formatPrice(orderBook.spread)}</span>
+                <span className="text-xs text-primary-400 font-medium">({orderBook.spreadPercentage.toFixed(3)}%)</span>
               </div>
             </div>
           </motion.div>
@@ -224,7 +176,7 @@ export default function OrderBook({ market }: OrderBookProps) {
                   >
                     {/* Depth visualization */}
                     <div 
-                      className="absolute inset-y-0 right-0 bg-bull-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100"
+                      className="absolute inset-y-0 right-0 bg-bull-500/10 transition-all duration-300"
                       style={{ width: `${(bid.total / maxTotal) * 100}%` }}
                     />
                     

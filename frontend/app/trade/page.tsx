@@ -7,7 +7,7 @@ import {
   ChevronDown, Star, Bell, Maximize2, Minus, X,
   BarChart2, CandlestickChart, LineChart, Volume2,
   RefreshCcw, Clock, AlertCircle, Layout, Layers,
-  ChevronRight, Info
+  ChevronRight, Info, Menu, X as XIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import TradingChart from '@/components/trading/TradingChart';
@@ -46,7 +46,7 @@ const PriceTicker = ({ price, prevPrice }: { price: number; prevPrice: number })
           color: flash ? (isUp ? '#10b981' : '#ef4444') : '#ffffff',
         }}
         transition={{ duration: 0.3 }}
-        className="text-4xl font-bold font-mono tracking-tight"
+        className="text-3xl lg:text-4xl font-bold font-mono tracking-tight"
       >
         ${formatPrice(price)}
       </motion.span>
@@ -66,9 +66,9 @@ const PriceTicker = ({ price, prevPrice }: { price: number; prevPrice: number })
 const MarketStatsBar = ({ marketData, isLoading }: { marketData: any; isLoading: boolean }) => {
   if (isLoading || !marketData) {
     return (
-      <div className="flex items-center gap-6 animate-pulse">
+      <div className="flex items-center gap-4 animate-pulse">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-12 w-28 bg-dark-800/50 rounded-xl" />
+          <div key={i} className="h-10 w-24 bg-dark-800/50 rounded-lg" />
         ))}
       </div>
     );
@@ -80,33 +80,29 @@ const MarketStatsBar = ({ marketData, isLoading }: { marketData: any; isLoading:
       value: `$${formatPrice(marketData.high24h)}`, 
       icon: TrendingUp,
       color: 'text-bull-400',
-      bgColor: 'bg-bull-500/10'
     },
     { 
       label: '24h Low', 
       value: `$${formatPrice(marketData.low24h)}`, 
       icon: TrendingDown,
       color: 'text-bear-400',
-      bgColor: 'bg-bear-500/10'
     },
     { 
       label: '24h Volume', 
       value: formatVolume(marketData.volume24h), 
       icon: Volume2,
       color: 'text-primary-400',
-      bgColor: 'bg-primary-500/10'
     },
     { 
       label: 'Market Cap', 
       value: formatVolume(marketData.marketCap), 
       icon: BarChart2,
       color: 'text-secondary-400',
-      bgColor: 'bg-secondary-500/10'
     },
   ];
   
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
@@ -115,12 +111,12 @@ const MarketStatsBar = ({ marketData, isLoading }: { marketData: any; isLoading:
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl ${stat.bgColor} border border-white/5`}
+            className="flex items-center gap-2 px-3 py-1.5 glass rounded-lg border border-white/5"
           >
-            <Icon className={`w-4 h-4 ${stat.color}`} />
+            <Icon className={`w-3.5 h-3.5 ${stat.color}`} />
             <div className="flex flex-col">
-              <span className="text-xs text-gray-500 font-medium">{stat.label}</span>
-              <span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span>
+              <span className="text-[10px] text-gray-500 leading-none">{stat.label}</span>
+              <span className={`text-xs font-bold ${stat.color}`}>{stat.value}</span>
             </div>
           </motion.div>
         );
@@ -150,6 +146,7 @@ export default function TradePage() {
   const [latency, setLatency] = useState(0.3);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const { marketData, isLoading } = useMarketData(selectedMarket);
   
@@ -174,23 +171,23 @@ export default function TradePage() {
     <div className="min-h-screen bg-dark-950 overflow-hidden">
       {/* Enhanced Top Navigation Bar */}
       <header className="sticky top-0 z-50 glass-dark border-b border-white/5 backdrop-blur-2xl">
-        <div className="max-w-[1920px] mx-auto px-6">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-[1920px] mx-auto px-4 lg:px-6">
+          <div className="flex items-center justify-between h-16 lg:h-20 gap-4">
             {/* Left section - Logo & Market Info */}
-            <div className="flex items-center gap-6 flex-1 min-w-0">
+            <div className="flex items-center gap-3 lg:gap-6 flex-1 min-w-0">
               {/* Logo */}
               <Link href="/" className="flex items-center gap-2 flex-shrink-0">
                 <motion.div 
                   whileHover={{ scale: 1.05 }}
-                  className="w-10 h-10 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-glow"
+                  className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-glow"
                 >
-                  <span className="text-white font-bold text-lg">A</span>
+                  <span className="text-white font-bold text-sm lg:text-lg">A</span>
                 </motion.div>
-                <span className="text-xl font-bold text-gradient-primary hidden sm:block">AxelarX</span>
+                <span className="text-lg lg:text-xl font-bold text-gradient-primary hidden sm:block">AxelarX</span>
               </Link>
               
               {/* Divider */}
-              <div className="h-10 w-px bg-white/10 hidden md:block" />
+              <div className="h-8 lg:h-10 w-px bg-white/10 hidden md:block" />
               
               {/* Market Selector */}
               <div className="flex-shrink-0">
@@ -202,39 +199,39 @@ export default function TradePage() {
               
               {/* Favorite button */}
               <motion.button
-                whileHover={{ scale: 1.1, rotate: [0, -10, 10, 0] }}
+                whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsFavorite(!isFavorite)}
-                className={`p-2.5 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all flex-shrink-0 ${
                   isFavorite 
                     ? 'text-yellow-400 bg-yellow-500/10' 
                     : 'text-gray-500 hover:text-yellow-400 hover:bg-white/5'
                 }`}
               >
-                <Star className="w-5 h-5" fill={isFavorite ? 'currentColor' : 'none'} />
+                <Star className="w-4 h-4 lg:w-5 lg:h-5" fill={isFavorite ? 'currentColor' : 'none'} />
               </motion.button>
 
-              {/* Price Display - Always visible */}
+              {/* Price Display - Desktop only */}
               {!isLoading && marketData && (
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="hidden lg:flex items-center gap-4 ml-4"
+                  className="hidden xl:flex items-center gap-4 ml-2"
                 >
                   <div className="flex flex-col">
                     <PriceTicker price={marketData.price} prevPrice={prevPrice} />
                     <div className={`flex items-center gap-1.5 mt-1 ${
-                      marketData.change24h >= 0 ? 'text-bull-400' : 'text-bear-400'
+                      marketData.changePercent24h >= 0 ? 'text-bull-400' : 'text-bear-400'
                     }`}>
-                      {marketData.change24h >= 0 ? (
-                        <TrendingUp className="w-3.5 h-3.5" />
+                      {marketData.changePercent24h >= 0 ? (
+                        <TrendingUp className="w-3 h-3" />
                       ) : (
-                        <TrendingDown className="w-3.5 h-3.5" />
+                        <TrendingDown className="w-3 h-3" />
                       )}
-                      <span className="text-sm font-semibold">
-                        {formatPercentage(marketData.change24h)}
+                      <span className="text-xs font-semibold">
+                        {formatPercentage(marketData.changePercent24h)}
                       </span>
-                      <span className="text-xs text-gray-500">24h</span>
+                      <span className="text-[10px] text-gray-500">24h</span>
                     </div>
                   </div>
                 </motion.div>
@@ -246,7 +243,7 @@ export default function TradePage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="hidden xl:flex items-center"
+                className="hidden 2xl:flex items-center"
               >
                 <MarketStatsBar marketData={marketData} isLoading={isLoading} />
               </motion.div>
@@ -254,19 +251,19 @@ export default function TradePage() {
 
             {/* Right section - Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Latency indicator */}
+              {/* Latency indicator - Desktop only */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="hidden md:flex items-center gap-2 px-3 py-2 glass rounded-xl border border-white/5"
+                className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 glass rounded-lg border border-white/5"
               >
                 <div className="relative">
-                  <div className="w-2 h-2 bg-bull-500 rounded-full" />
-                  <div className="absolute inset-0 w-2 h-2 bg-bull-500 rounded-full animate-ping opacity-75" />
+                  <div className="w-1.5 h-1.5 bg-bull-500 rounded-full" />
+                  <div className="absolute inset-0 w-1.5 h-1.5 bg-bull-500 rounded-full animate-ping opacity-75" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-500 leading-none">Latency</span>
-                  <span className="text-xs text-bull-400 font-mono font-bold">{latency.toFixed(1)}ms</span>
+                  <span className="text-[9px] text-gray-500 leading-none">Latency</span>
+                  <span className="text-[10px] text-bull-400 font-mono font-bold">{latency.toFixed(1)}ms</span>
                 </div>
               </motion.div>
               
@@ -275,39 +272,39 @@ export default function TradePage() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="p-2.5 glass rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
+                  className="p-2 glass rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
                   title="Notifications"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-4 h-4 lg:w-5 lg:h-5" />
                 </motion.button>
                 
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowSettings(!showSettings)}
-                  className={`p-2.5 glass rounded-xl transition-colors border ${
+                  className={`p-2 glass rounded-lg transition-colors border ${
                     showSettings 
                       ? 'text-primary-400 bg-primary-500/10 border-primary-500/30' 
                       : 'text-gray-400 hover:text-white hover:bg-white/10 border-white/5'
                   }`}
                   title="Settings"
                 >
-                  <Settings className="w-5 h-5" />
+                  <Settings className="w-4 h-4 lg:w-5 lg:h-5" />
                 </motion.button>
                 
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="p-2.5 glass rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
+                  className="p-2 glass rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
                   title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                 >
-                  {isFullscreen ? <Minus className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                  {isFullscreen ? <Minus className="w-4 h-4 lg:w-5 lg:h-5" /> : <Maximize2 className="w-4 h-4 lg:w-5 lg:h-5" />}
                 </motion.button>
               </div>
 
               {/* Wallet Connect */}
-              <div className="ml-2">
+              <div className="ml-1">
                 <WalletConnect />
               </div>
             </div>
@@ -316,31 +313,21 @@ export default function TradePage() {
       </header>
 
       {/* Main Trading Layout */}
-      <div className={`max-w-[1920px] mx-auto transition-all duration-300 ${isFullscreen ? 'px-0' : 'px-4 lg:px-6'} py-4 lg:py-6`}>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 h-[calc(100vh-6rem)]">
+      <div className={`max-w-[1920px] mx-auto transition-all duration-300 ${isFullscreen ? 'px-0' : 'px-3 lg:px-4 xl:px-6'} py-3 lg:py-4 xl:py-6`}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 xl:gap-6 h-[calc(100vh-4rem)] lg:h-[calc(100vh-5rem)]">
           
           {/* Left Column - Order Book */}
           <motion.aside
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className={`lg:col-span-3 xl:col-span-2 flex flex-col gap-4 transition-all duration-300 ${
+            className={`lg:col-span-3 xl:col-span-2 flex flex-col gap-3 lg:gap-4 transition-all duration-300 ${
               sidebarCollapsed ? 'lg:col-span-1' : ''
             }`}
           >
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <OrderBook market={selectedMarket} />
             </div>
-            
-            {/* Collapse button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex items-center justify-center w-full p-2 glass rounded-xl border border-white/5 hover:bg-white/5 transition-colors"
-            >
-              <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
-            </motion.button>
           </motion.aside>
 
           {/* Center Column - Chart */}
@@ -352,49 +339,49 @@ export default function TradePage() {
           >
             <div className="card h-full flex flex-col overflow-hidden">
               {/* Enhanced Chart Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/5 bg-dark-900/50">
-                <div className="flex items-center gap-4 flex-1">
+              <div className="flex items-center justify-between p-3 lg:p-4 border-b border-white/5 bg-dark-900/50 flex-wrap gap-2">
+                <div className="flex items-center gap-2 lg:gap-4 flex-1 min-w-0">
                   {/* Chart Type Toggle */}
-                  <div className="flex items-center gap-1 p-1 glass rounded-xl border border-white/5">
+                  <div className="flex items-center gap-1 p-0.5 glass rounded-lg border border-white/5">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setChartType('candle')}
-                      className={`p-2.5 rounded-lg transition-all ${
+                      className={`p-1.5 lg:p-2 rounded-md transition-all ${
                         chartType === 'candle' 
-                          ? 'bg-primary-500/20 text-primary-400 shadow-glow' 
+                          ? 'bg-primary-500/20 text-primary-400' 
                           : 'text-gray-500 hover:text-white hover:bg-white/5'
                       }`}
                       title="Candlestick Chart"
                     >
-                      <CandlestickChart className="w-4 h-4" />
+                      <CandlestickChart className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setChartType('line')}
-                      className={`p-2.5 rounded-lg transition-all ${
+                      className={`p-1.5 lg:p-2 rounded-md transition-all ${
                         chartType === 'line' 
-                          ? 'bg-primary-500/20 text-primary-400 shadow-glow' 
+                          ? 'bg-primary-500/20 text-primary-400' 
                           : 'text-gray-500 hover:text-white hover:bg-white/5'
                       }`}
                       title="Line Chart"
                     >
-                      <LineChart className="w-4 h-4" />
+                      <LineChart className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </motion.button>
                   </div>
                   
                   {/* Timeframe Selector */}
-                  <div className="flex items-center gap-1 p-1 glass rounded-xl border border-white/5">
+                  <div className="flex items-center gap-1 p-0.5 glass rounded-lg border border-white/5 overflow-x-auto scrollbar-hide">
                     {timeframes.map((tf) => (
                       <motion.button
                         key={tf.value}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedTimeframe(tf.value)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                        className={`px-2 lg:px-3 py-1 lg:py-1.5 text-[10px] lg:text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                           selectedTimeframe === tf.value
-                            ? 'bg-primary-500/20 text-primary-400 shadow-glow'
+                            ? 'bg-primary-500/20 text-primary-400'
                             : 'text-gray-500 hover:text-white hover:bg-white/5'
                         }`}
                       >
@@ -409,9 +396,9 @@ export default function TradePage() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-400 hover:text-white glass rounded-xl border border-white/5 hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-1.5 px-2 lg:px-4 py-1.5 lg:py-2 text-[10px] lg:text-xs font-medium text-gray-400 hover:text-white glass rounded-lg border border-white/5 hover:bg-white/5 transition-colors"
                   >
-                    <BarChart2 className="w-4 h-4" />
+                    <BarChart2 className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     <span className="hidden sm:inline">Indicators</span>
                   </motion.button>
                   
@@ -419,16 +406,16 @@ export default function TradePage() {
                   <motion.button
                     whileHover={{ scale: 1.05, rotate: 180 }}
                     whileTap={{ scale: 0.95 }}
-                    className="p-2 text-gray-400 hover:text-white glass rounded-xl border border-white/5 hover:bg-white/5 transition-colors"
+                    className="p-1.5 lg:p-2 text-gray-400 hover:text-white glass rounded-lg border border-white/5 hover:bg-white/5 transition-colors"
                     title="Refresh"
                   >
-                    <RefreshCcw className="w-4 h-4" />
+                    <RefreshCcw className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   </motion.button>
                 </div>
               </div>
               
               {/* Chart Container */}
-              <div className="flex-1 min-h-0 p-4">
+              <div className="flex-1 min-h-0 p-2 lg:p-4">
                 <TradingChart 
                   market={selectedMarket} 
                   timeframe={selectedTimeframe}
@@ -443,7 +430,7 @@ export default function TradePage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-3 flex flex-col gap-4 min-h-0"
+            className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0"
           >
             {/* Trade Form */}
             <div className="flex-shrink-0">
@@ -451,12 +438,12 @@ export default function TradePage() {
             </div>
             
             {/* Wallet Panel */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 hidden lg:block">
               <WalletPanel />
             </div>
             
             {/* Recent Trades */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 hidden lg:block">
               <RecentTrades market={selectedMarket} />
             </div>
           </motion.aside>
@@ -468,16 +455,16 @@ export default function TradePage() {
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 lg:hidden glass-dark border-t border-white/10 p-4 z-40 backdrop-blur-2xl"
+          className="fixed bottom-0 left-0 right-0 lg:hidden glass-dark border-t border-white/10 p-3 z-40 backdrop-blur-2xl"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold font-mono">${formatPrice(marketData.price)}</div>
-              <div className={`flex items-center gap-1.5 text-sm mt-1 ${
-                marketData.change24h >= 0 ? 'text-bull-400' : 'text-bear-400'
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-xl font-bold font-mono">${formatPrice(marketData.price)}</div>
+              <div className={`flex items-center gap-1.5 text-xs mt-0.5 ${
+                marketData.changePercent24h >= 0 ? 'text-bull-400' : 'text-bear-400'
               }`}>
-                {marketData.change24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                <span className="font-semibold">{formatPercentage(marketData.change24h)}</span>
+                {marketData.changePercent24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span className="font-semibold">{formatPercentage(marketData.changePercent24h)}</span>
               </div>
             </div>
             
@@ -485,14 +472,14 @@ export default function TradePage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="btn-buy px-6 py-3 rounded-xl font-bold"
+                className="btn-buy px-4 py-2 rounded-lg font-bold text-sm"
               >
                 Buy
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="btn-sell px-6 py-3 rounded-xl font-bold"
+                className="btn-sell px-4 py-2 rounded-lg font-bold text-sm"
               >
                 Sell
               </motion.button>
@@ -501,7 +488,7 @@ export default function TradePage() {
         </motion.div>
       )}
 
-      {/* Settings Modal (Placeholder) */}
+      {/* Settings Modal */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
@@ -524,7 +511,7 @@ export default function TradePage() {
                   onClick={() => setShowSettings(false)}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-400" />
+                  <XIcon className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
               <p className="text-gray-400">Settings panel coming soon...</p>

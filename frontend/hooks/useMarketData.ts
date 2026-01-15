@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { priceService, PriceData, OrderBookData as RawOrderBookData, TradeData } from '@/lib/priceService';
 
 export interface MarketData {
   symbol: string;
@@ -24,97 +25,63 @@ interface UseMarketDataResult {
   refetch: () => void;
 }
 
-// Generate realistic mock data
-const generateMockData = (symbol: string): MarketData => {
-  const basePrices: Record<string, number> = {
-    'BTC/USDT': 45234.56,
-    'ETH/USDT': 2834.67,
-    'SOL/USDT': 98.45,
-    'AVAX/USDT': 34.56,
-    'DOT/USDT': 7.89,
-    'ATOM/USDT': 9.12,
-    'NEAR/USDT': 5.67,
-    'FTM/USDT': 0.45,
-    'MATIC/USDT': 0.89,
-    'ARB/USDT': 1.23,
-  };
-
-  const basePrice = basePrices[symbol] || 100;
-  const volatility = 0.02; // 2% volatility
-  const randomChange = (Math.random() - 0.5) * 2 * volatility;
-  const price = basePrice * (1 + randomChange);
-  
-  const change24h = (Math.random() - 0.4) * 10; // -6% to +6%
-  const previousPrice = price / (1 + change24h / 100);
-  
-  const volume24h = basePrice * (10000 + Math.random() * 50000);
-  const volumeQuote24h = volume24h * price;
-  
-  return {
-    symbol,
-    price,
-    change24h: price - previousPrice,
-    changePercent24h: change24h,
-    high24h: price * (1 + Math.random() * 0.05),
-    low24h: price * (1 - Math.random() * 0.05),
-    volume24h,
-    volumeQuote24h,
-    marketCap: price * (1000000 + Math.random() * 10000000),
-    lastUpdate: Date.now(),
-  };
-};
-
-// Simulated price update
-const updatePrice = (data: MarketData): MarketData => {
-  const volatility = 0.001; // 0.1% per update
-  const randomChange = (Math.random() - 0.5) * 2 * volatility;
-  const newPrice = data.price * (1 + randomChange);
-  
-  return {
-    ...data,
-    price: newPrice,
-    change24h: data.change24h + (newPrice - data.price),
-    high24h: Math.max(data.high24h, newPrice),
-    low24h: Math.min(data.low24h, newPrice),
-    lastUpdate: Date.now(),
-  };
-};
+// Convert PriceData to MarketData
+const convertToMarketData = (data: PriceData): MarketData => ({
+  symbol: data.symbol,
+  price: data.price,
+  change24h: data.priceChange24h,
+  changePercent24h: data.priceChangePercent24h,
+  high24h: data.high24h,
+  low24h: data.low24h,
+  volume24h: data.volume24h,
+  volumeQuote24h: data.quoteVolume24h,
+  marketCap: data.quoteVolume24h * 10, // Estimate, real would come from CoinGecko
+  lastUpdate: data.lastUpdate,
+});
 
 export function useMarketData(market: string): UseMarketDataResult {
   const queryClient = useQueryClient();
   const [realTimeData, setRealTimeData] = useState<MarketData | null>(null);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Initial data fetch
-  const { data, isLoading, isError, error, refetch } = useQuery<MarketData>({
+  // Initial data fetch from Binance
+  const { data, isLoading, refetch } = useQuery<MarketData | null>({
     queryKey: ['marketData', market],
     queryFn: async () => {
-      // In production, this would try to fetch from contract first
-      // For now, use mock data until contracts are deployed
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return generateMockData(market);
+      try {
+        const priceData = await priceService.getPrice(market);
+        if (priceData) {
+          return convertToMarketData(priceData);
+        }
+        return null;
+      } catch (err) {
+        setIsError(true);
+        setError(err as Error);
+        return null;
+      }
     },
     staleTime: 5000,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Real-time updates simulation
+  // Subscribe to real-time updates
   useEffect(() => {
-    if (!data) return;
+    if (data) {
+      setRealTimeData(data);
+    }
 
-    setRealTimeData(data);
+    const unsubscribe = priceService.subscribeToPrice(market, (priceData) => {
+      setRealTimeData(convertToMarketData(priceData));
+      setIsError(false);
+      setError(null);
+    });
 
-    // Simulate WebSocket updates
-    const interval = setInterval(() => {
-      setRealTimeData(prev => {
-        if (!prev) return data;
-        return updatePrice(prev);
-      });
-    }, 500 + Math.random() * 1000); // Random interval between 0.5-1.5s
+    return () => {
+      unsubscribe();
+    };
+  }, [market, data]);
 
-    return () => clearInterval(interval);
-  }, [data]);
-
-  // Memoize the refetch callback
   const memoizedRefetch = useCallback(() => {
     refetch();
   }, [refetch]);
@@ -123,42 +90,53 @@ export function useMarketData(market: string): UseMarketDataResult {
     marketData: realTimeData,
     isLoading,
     isError,
-    error: error as Error | null,
+    error,
     refetch: memoizedRefetch,
   };
 }
 
-// Hook for multiple markets
+// Hook for multiple markets with real-time updates
 export function useMultipleMarketData(markets: string[]) {
   const [allData, setAllData] = useState<Record<string, MarketData>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize with mock data
-    const initialData: Record<string, MarketData> = {};
-    markets.forEach(market => {
-      initialData[market] = generateMockData(market);
-    });
-    setAllData(initialData);
+    const unsubscribes: (() => void)[] = [];
 
-    // Update all markets periodically
-    const interval = setInterval(() => {
-      setAllData(prev => {
-        const updated: Record<string, MarketData> = {};
-        Object.entries(prev).forEach(([market, data]) => {
-          updated[market] = updatePrice(data);
-        });
-        return updated;
+    // Initial fetch
+    const fetchAll = async () => {
+      setIsLoading(true);
+      const prices = await priceService.getPrices(markets);
+      const converted: Record<string, MarketData> = {};
+      prices.forEach((data, symbol) => {
+        converted[symbol] = convertToMarketData(data);
       });
-    }, 1000);
+      setAllData(converted);
+      setIsLoading(false);
+    };
 
-    return () => clearInterval(interval);
+    fetchAll();
+
+    // Subscribe to real-time updates for each market
+    markets.forEach((market) => {
+      const unsubscribe = priceService.subscribeToPrice(market, (priceData) => {
+        setAllData((prev) => ({
+          ...prev,
+          [market]: convertToMarketData(priceData),
+        }));
+      });
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, [markets.join(',')]);
 
-  return allData;
+  return { data: allData, isLoading };
 }
 
-// Hook for order book data (mock version - for backward compatibility)
-// Note: Use the contract-based useOrderBook from './useOrderBook' for real data
+// Real-time Order Book Hook
 export interface OrderBookEntry {
   price: number;
   size: number;
@@ -172,61 +150,83 @@ export interface OrderBookData {
   spreadPercentage: number;
 }
 
-export function useMockOrderBook(market: string) {
+export function useOrderBookData(market: string) {
   const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const generateOrderBook = (basePrice: number): OrderBookData => {
-      const spread = basePrice * 0.0005;
-      const bids: OrderBookEntry[] = [];
-      const asks: OrderBookEntry[] = [];
+    let mounted = true;
 
-      let bidTotal = 0;
-      let askTotal = 0;
+    // Initial fetch
+    const fetchOrderBook = async () => {
+      const data = await priceService.getOrderBook(market, 20);
+      if (mounted && data) {
+        const bids = data.bids.map((bid, index) => ({
+          price: bid.price,
+          size: bid.quantity,
+          total: data.bids.slice(0, index + 1).reduce((sum, b) => sum + b.quantity, 0),
+        }));
 
-      for (let i = 0; i < 15; i++) {
-        const bidPrice = basePrice - spread / 2 - i * basePrice * 0.0001;
-        const bidSize = Math.random() * 3 + 0.1;
-        bidTotal += bidSize;
-        bids.push({ price: bidPrice, size: bidSize, total: bidTotal });
+        const asks = data.asks.map((ask, index) => ({
+          price: ask.price,
+          size: ask.quantity,
+          total: data.asks.slice(0, index + 1).reduce((sum, a) => sum + a.quantity, 0),
+        }));
 
-        const askPrice = basePrice + spread / 2 + i * basePrice * 0.0001;
-        const askSize = Math.random() * 3 + 0.1;
-        askTotal += askSize;
-        asks.unshift({ price: askPrice, size: askSize, total: askTotal });
+        const spread = asks.length > 0 && bids.length > 0
+          ? asks[0].price - bids[0].price
+          : 0;
+
+        setOrderBook({
+          bids,
+          asks,
+          spread,
+          spreadPercentage: asks.length > 0 ? (spread / asks[0].price) * 100 : 0,
+        });
+        setIsLoading(false);
       }
+    };
 
-      return {
+    fetchOrderBook();
+
+    // Subscribe to real-time updates
+    const unsubscribe = priceService.subscribeToOrderBook(market, (data) => {
+      if (!mounted) return;
+
+      const bids = data.bids.map((bid, index) => ({
+        price: bid.price,
+        size: bid.quantity,
+        total: data.bids.slice(0, index + 1).reduce((sum, b) => sum + b.quantity, 0),
+      }));
+
+      const asks = data.asks.map((ask, index) => ({
+        price: ask.price,
+        size: ask.quantity,
+        total: data.asks.slice(0, index + 1).reduce((sum, a) => sum + a.quantity, 0),
+      }));
+
+      const spread = asks.length > 0 && bids.length > 0
+        ? asks[0].price - bids[0].price
+        : 0;
+
+      setOrderBook({
         bids,
         asks,
         spread,
-        spreadPercentage: (spread / basePrice) * 100,
-      };
+        spreadPercentage: asks.length > 0 ? (spread / asks[0].price) * 100 : 0,
+      });
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
     };
-
-    const basePrices: Record<string, number> = {
-      'BTC/USDT': 45234.56,
-      'ETH/USDT': 2834.67,
-      'SOL/USDT': 98.45,
-    };
-
-    const basePrice = basePrices[market] || 100;
-
-    const interval = setInterval(() => {
-      const newPrice = basePrice * (1 + (Math.random() - 0.5) * 0.002);
-      setOrderBook(generateOrderBook(newPrice));
-    }, 500);
-
-    // Initial data
-    setOrderBook(generateOrderBook(basePrice));
-
-    return () => clearInterval(interval);
   }, [market]);
 
-  return orderBook;
+  return { orderBook, isLoading };
 }
 
-// Hook for recent trades
+// Real-time Trades Hook
 export interface Trade {
   id: string;
   price: number;
@@ -237,49 +237,54 @@ export interface Trade {
 
 export function useRecentTrades(market: string) {
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const basePrices: Record<string, number> = {
-      'BTC/USDT': 45234.56,
-      'ETH/USDT': 2834.67,
-      'SOL/USDT': 98.45,
+    let mounted = true;
+
+    // Initial fetch
+    const fetchTrades = async () => {
+      const data = await priceService.getRecentTrades(market, 50);
+      if (mounted) {
+        setTrades(data.map(t => ({
+          id: t.id,
+          price: t.price,
+          size: t.quantity,
+          side: t.side,
+          timestamp: t.timestamp,
+        })));
+        setIsLoading(false);
+      }
     };
 
-    let price = basePrices[market] || 100;
+    fetchTrades();
 
-    // Generate initial trades
-    const initialTrades: Trade[] = [];
-    for (let i = 0; i < 20; i++) {
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
-      price += (Math.random() - 0.5) * price * 0.001;
-      initialTrades.push({
-        id: `trade-${Date.now()}-${i}`,
-        price,
-        size: Math.random() * 2 + 0.01,
-        side,
-        timestamp: Date.now() - i * 1000,
+    // Subscribe to real-time updates
+    const unsubscribe = priceService.subscribeToTrades(market, (trade) => {
+      if (!mounted) return;
+      setTrades((prev) => {
+        const newTrade: Trade = {
+          id: trade.id,
+          price: trade.price,
+          size: trade.quantity,
+          side: trade.side,
+          timestamp: trade.timestamp,
+        };
+        return [newTrade, ...prev].slice(0, 50);
       });
-    }
-    setTrades(initialTrades);
+    });
 
-    // Add new trades periodically
-    const interval = setInterval(() => {
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
-      price += (Math.random() - 0.5) * price * 0.001;
-      
-      const newTrade: Trade = {
-        id: `trade-${Date.now()}`,
-        price,
-        size: Math.random() * 2 + 0.01,
-        side,
-        timestamp: Date.now(),
-      };
-
-      setTrades(prev => [newTrade, ...prev.slice(0, 49)]);
-    }, 800 + Math.random() * 2000);
-
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [market]);
 
-  return trades;
+  return { trades, isLoading };
+}
+
+// Legacy hook for backward compatibility
+export function useMockOrderBook(market: string) {
+  const { orderBook } = useOrderBookData(market);
+  return orderBook;
 }

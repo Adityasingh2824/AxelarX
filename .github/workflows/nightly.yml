@@ -1,0 +1,107 @@
+name: Nightly Build & Test
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  # Full test suite
+  full-test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust-version: ['1.70.0', 'stable', 'beta']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust ${{ matrix.rust-version }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust-version }}
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Run full test suite
+        run: |
+          cargo test --all --release --verbose
+
+  # Performance benchmarks
+  benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Run benchmarks
+        run: |
+          cargo bench --all || echo "No benchmarks configured"
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: target/criterion/
+          retention-days: 30
+
+  # Dependency updates check
+  check-dependencies:
+    name: Check Dependency Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Rust dependencies
+        uses: actions-rs/cargo@v1
+        with:
+          command: outdated
+          args: --exit-code 1 || echo "Some dependencies may be outdated"
+
+      - name: Check npm dependencies
+        run: |
+          cd frontend
+          npm outdated || echo "Some npm dependencies may be outdated"
+
+  # Security audit
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run cargo audit
+        uses: rustsec/rustsec-action@master
+        with:
+          command: audit
+          args: --deny warnings
+
+      - name: Run npm audit
+        run: |
+          cd frontend
+          npm audit --audit-level=moderate || true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+
+
+
+
+
+
